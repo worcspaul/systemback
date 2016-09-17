@@ -1,24 +1,39 @@
 #!/usr/bin/perl
 
+# backupsys.pl	-	Script to backup filesystems to remote server using dump
+#
+# PRE-REQUISITES
+#
+
 use Getopt::Std;
-$MAJORREV=1;
-$subrev=0;
-$fixrev=0;
-#	backupsys.pl	-	Script to backup filesystems to remote server using dump
-$SSH = "/usr/bin/ssh";
-$BACKUP_HOME="/backups";
-$LOCALCFG=$BACKUP_HOME."/config.pl";
-$LOGPATH="/var/log/backups";
-
-$BACKUPHOST="hq-app-backup01.prod.impello.co.uk";
-$backup_command = "/sbin/dump";
-$restore_command = "/sbin/restore";
-
-## require "$LOCALCFG";
-
-$Masthead = sprintf("[backupsys v%d.%d.%d (c) 2016 First Utility Ltd.]",$MAJORREV,$subrev,$fixrev);
 
 getopts('ihd');
+
+$MAJORREV=1;
+$subrev=0;
+$fixrev=1;
+
+
+#####################################################################
+# Local settings - Update these to suit your environment
+#####################################################################
+
+# Paths to commands. We could use "which <command>" but would then have to chop off
+# trailling CR/LF
+ 
+$SSH             = "/usr/bin/ssh";
+$BACKUP_COMMAND  = "/sbin/dump";
+$RESTORE_COMMAND = "/sbin/restore";
+$MAIL_COMMAND    = "/usr/bin/bsmtp";  # Path to mail client such as mailx or bsmtp
+
+$BACKUP_HOME     = "/backups";
+$LOGPATH         = "/var/log/backups";
+
+# FQDN of host to backup to
+$BACKUPHOST      = "hq-app-backup01.prod.impello.co.uk";  
+
+
+#####################################################################
 
 #====================================================================
 # log_message - Log the passed message to syslog
@@ -37,7 +52,6 @@ sub log_message {
 
 sub write_log {
    $Status = shift(@_);
-#   printf("ELOG: %s %s %s %s %s\n",$Status,$bkType,$Start_Time,$Now,$Elapsed_Time);
    open(ELOG,">>$LogFile");
    printf(ELOG "%s %s %s %s %s\n",$Status,$bkType,$Start_Time,$Now,$Elapsed_Time);
    close(ELOG);
@@ -207,7 +221,7 @@ sub write_stat {
 ##}
 ## foreach $Recipient (@Test) {
 ###   foreach $Recipient (@Mail_Recipients) {
-##      $mailcmd=sprintf("%s | %s %s\@bcu.ac.uk",$base_cmd,$Email_Command,$Recipient);
+##      $mailcmd=sprintf("%s | %s %s\@bcu.ac.uk",$base_cmd,$MAIL_COMMAND,$Recipient);
 ##      system($mailcmd);
 ##   }
 ##}
@@ -241,8 +255,8 @@ $mounted = 0;
 
          $target_dir=sprintf("/backups/%s/%s",$Sysname,$bkType);
 
-         $bkcommand=sprintf("%s %duf - %s | %s backup\@%s \"dd of=%s/%s\"",$backup_command,$BACKUPLEVEL,$mountpoint,$SSH,$BACKUPHOST,$target_dir,$dumpfile);
-         $restore_cmd=sprintf("%s rf %s/%s",$restore_command,$target_dir,$dumpfile);
+         $bkcommand=sprintf("%s %duf - %s | %s backup\@%s \"dd of=%s/%s\"",$BACKUP_COMMAND,$BACKUPLEVEL,$mountpoint,$SSH,$BACKUPHOST,$target_dir,$dumpfile);
+         $restore_cmd=sprintf("%s rf %s/%s",$RESTORE_COMMAND,$target_dir,$dumpfile);
       }
       printf("%s\n",$bkcommand);
 
@@ -358,8 +372,8 @@ if(defined $opt_d) {
    print "Backup Type:     $bkType\n";
    print "Backup Level:    $BACKUPLEVEL\n";
    print "Day of Week:     $DOW\n";
-   print "backup_command:  $backup_command\n";
-   print "restore_command: $restore_command\n";
+   print "backup_command:  $BACKUP_COMMAND\n";
+   print "RESTORE_COMMAND: $RESTORE_COMMAND\n";
    print "Logging to:      $DUMPLOG\n";
    print "Target Dir:      $target_dir\n";
    print "ini file:        $FS_INIFILE\n";
