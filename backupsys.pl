@@ -136,7 +136,7 @@ sub mail_errors {
 
 sub mail_start {
    open(HDR,">$HEADERFILE");
-   printf(HDR "Subject: [BACKUP] backup of %s to disk files started at %s on %s\n",$enviro,$Now,$Sysname);
+   printf(HDR "Subject: [BACKUP] Dump of filesystems to disk files started at %s on %s\n",$Now,$Sysname);
    close(HDR);
    open(MSG,">$MSGFILE");
    printf(MSG "%s\n\nBackup of %s to file started at %s\n",$Masthead,$Sysname,$Now);
@@ -157,7 +157,7 @@ sub mail_start {
 
 sub mail_end {
    open(HDR,">$HEADERFILE");
-   printf(HDR "Subject: [BACKUP] backup of %s to disk files finished at %s on %s\n",$enviro, $Now,$Sysname);
+   printf(HDR "Subject: [BACKUP] Dump of filesystems to disk files finished at %s on %s\n", $Now,$Sysname);
    printf(HDR "MIME-Version: 1.0\n");
    printf(HDR "Content-Type: text/html\n");
    printf(HDR "<html><body>\n");
@@ -302,21 +302,11 @@ $mtab = "/etc/mtab";
 $Sysname = `hostname`;
 print $Sysname;
 chop($Sysname);
-$SysType = `uname -s`;
-chop($SysType);
-if ($SysType eq "SunOS") {
-   $mtab = "/etc/mnttab";
-}
-# If hostname has dots in it, it's a FQDN, so extract the host portion
-#if ($Sysname =~ /(\w+)\./ )  {
-#   $Sysname=$1;
-#}
 
 $bkType="Full";
-$enviro="SYSTEM";
-$HEADERFILE=sprintf("/tmp/%s_backup_mail_header",$enviro);
-$STATSFILE=sprintf("/tmp/%s_backup_mail_stats",$enviro);
-$MSGFILE=sprintf("/tmp/%s_backup_mail_msg",$enviro);
+$HEADERFILE = "/tmp/backup_mail_header";
+$STATSFILE  = "/tmp/backup_mail_stats";
+$MSGFILE    = "/tmp/backup_mail_msg";
 
 $FS_INIFILE=$BACKUP_HOME."/fs.ini";
 
@@ -352,7 +342,6 @@ if (defined $opt_p) {
 }
 
 $target_dir=sprintf("/backups/%s/%s",$Sysname,$bkType);
-$files_to_backup=sprintf("%s/files_to_backup.%s",$target_dir,$enviro);
 ## $restorer_script=sprintf("%s/restorer",$target_dir);
 
 # Output some stuff if -d option used
@@ -373,9 +362,7 @@ if(defined $opt_d) {
    print "restore_command: $restore_command\n";
    print "Logging to:      $DUMPLOG\n";
    print "Target Dir:      $target_dir\n";
-   print "Files to backup: $files_to_backup\n";
    print "ini file:        $FS_INIFILE\n";
-   print "Environment:     $enviro\n";
 }
 
 
