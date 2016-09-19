@@ -13,27 +13,11 @@ $MAJORREV=1;
 $subrev=0;
 $fixrev=1;
 
+$BACKUP_HOME = "/usr/local/backups";
+$LOCALCFG    = $BACKUP_HOME."/config.pl";
+$LOGPATH     = "/var/log/backups";
 
-#####################################################################
-# Local settings - Update these to suit your environment
-#####################################################################
-
-# Paths to commands. We could use "which <command>" but would then have to chop off
-# trailling CR/LF
- 
-$SSH             = "/usr/bin/ssh";
-$BACKUP_COMMAND  = "/sbin/dump";
-$RESTORE_COMMAND = "/sbin/restore";
-$MAIL_COMMAND    = "/usr/bin/bsmtp";  # Path to mail client such as mailx or bsmtp
-
-$BACKUP_HOME     = "/backups";
-$LOGPATH         = "/var/log/backups";
-
-# FQDN of host to backup to
-$BACKUPHOST      = "hq-app-backup01.prod.impello.co.uk";  
-
-
-#####################################################################
+require "$LOCALCFG";
 
 #====================================================================
 # log_message - Log the passed message to syslog
@@ -213,18 +197,16 @@ sub write_stat {
 # send_mail - Send mail to recipients
 #====================================================================
 
-##sub send_mail {
-##if (defined @_) {
-##$base_cmd = sprintf("cat %s %s %s",$HEADERFILE,$STATSFILE,$MSGFILE);
-##} else {
-##$base_cmd = sprintf("cat %s %s",$HEADERFILE,$MSGFILE);
-##}
-## foreach $Recipient (@Test) {
-###   foreach $Recipient (@Mail_Recipients) {
-##      $mailcmd=sprintf("%s | %s %s\@bcu.ac.uk",$base_cmd,$MAIL_COMMAND,$Recipient);
-##      system($mailcmd);
-##   }
-##}
+sub send_mail {
+   my $arg = @_;
+   if (defined $arg) {
+      $base_cmd = sprintf("cat %s %s %s",$HEADERFILE,$STATSFILE,$MSGFILE);
+   } else {
+      $base_cmd = sprintf("cat %s %s",$HEADERFILE,$MSGFILE);
+   }
+   $mailcmd=sprintf("%s | %s %s",$base_cmd,$MAIL_COMMAND,$MAIL_RECIPIENT);
+   system($mailcmd);
+}
 
 
 #====================================================================
@@ -240,7 +222,7 @@ sub do_backup {
 #Check to see if filesystem is mounted before attempting to dump it (not really necessary with dump/ufsdump)
 ##         $mounted=`mount |grep '$mountpoint '`;
 ##         chop($mounted);
-$mounted = 0;
+      $mounted = 0;
       open (MTAB,$mtab) || die "Unable to open $mtab to check mounted filesystems";
       while(<MTAB>) {
          if($_ =~ /\S+ (\S+) .*/) {
@@ -278,11 +260,9 @@ $mounted = 0;
          &mail_errors($errmsg);
          &write_log("F");
       } else {
-#ufsdump command completed successfully.  Send message to syslog
+# dump command completed successfully.  Send message to syslog
             $message=sprintf("BACKUP_I_204 %s backup of %s complete",$bkType,$mountpoint);
             &log_message($message);
-#           &update_index;
-#        $File_No++;
       }
       printf(OUT "%s/%s\n",$rtarget_dir,$dumpfile);
 #Now write a line to the "restorer" script

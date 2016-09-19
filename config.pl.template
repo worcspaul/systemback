@@ -10,8 +10,6 @@ $BACKUP_COMMAND  = "/sbin/dump";
 $RESTORE_COMMAND = "/sbin/restore";
 $MAIL_COMMAND    = "/usr/bin/mailx";  # Path to mail client such as mailx. Could even be path to sendmail
 $MAIL_RECIPIENT  = "my_email\@mydomain.com";     
-$BACKUP_HOME     = "/backups";
-$LOGPATH         = "/var/log/backups";
 
 # FQDN of host to backup to
 $BACKUPHOST      = "backupserver.example.com";  

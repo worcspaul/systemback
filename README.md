@@ -1,38 +1,24 @@
 # systemback
 Collection of scripts to perform system backups
 
-These scripts are used to dump complete ext3/ext4 (future support will include xfs) filesystems to files on a remote
-server ready for them to be subsequently backed up by some other method. 
+The idea behind these scripts is to dump complete ext3/ext4 filesystems to files on a remote server ready for them
+to be subsequently backed up by some other method. The reasons for this are twofold:
 
-PRE-REQUISITES
+1.	The most recent Full and Incremental backups are retained on disk and are thus immediately available in
+	the event a full or partial restore is required.
 
-The dump and restore commands must be present on the system:
+2.	Enterprise backup software only needs to back up a handful of files to tape or VTL. Thus, if/when
+	necessary to recover those files, the recovery process takes less time as the software doesn't have to
+	build up a list of thousands (or even millions) of files to restore
 
-RedHat/CentOS
-	sudo yum install dump -y
+The main script will read an input file listing filesystem mountpoints and dump filenames, separated by colons,
+and will loop through each, performing the dump. When originally written, the script would write to a local, or 
+NFS mounted filesystem but this required extra storage on the host being backed up, or the maintenance of an NFS
+server, with problems being caused if the NFS link went away for any length of time.  Instead, the script now
+sends its output to STDOUT and pipes that to an SSH command executing dd on the remote server:
 
-Debian/Ubuntu/Mint:
-	sudo apt-get install dump
 
-A file listing filesystem mountpoints and dumpfiles, separated by colons, e.g
-
-/:root.dump
-/home:home.dump
-/usr/local:usr_local.dump
-
-The user  backup  must exist on the remote host and have persmissions to store the dump files
-
-A passphrase-less SSH key needs to be created for root on each host being backed up and sent to the target host
+/usr/bin/dump 0uf - / |ssh -i SSH_KEY.pub backup@remoteserver.com "dd of=/backups/FQDN-of-source/Full/root.dump"
 
 
 
-###########
-
-getinfo.pl
-
-This script can optionally be run in order to gather information about the system being backed
-up which may prove useful in a Disaster Recovery situation.
-
-backupsys.pl
-
-This script reads the input file and, having checked if the filesystem is mounted, executes th
