@@ -16,6 +16,8 @@ $fixrev=1;
 $BACKUP_HOME = "/usr/local/backups";
 $LOCALCFG    = $BACKUP_HOME."/config.pl";
 $LOGPATH     = "/var/log/backups";
+$FS_INIFILE  = $BACKUP_HOME."/FS.INI";
+
 
 require "$LOCALCFG";
 
@@ -126,7 +128,7 @@ sub mail_errors {
    open(MSG,">$MSGFILE");
    printf(MSG "%s\n%s\n",$Masthead,$TEXT);
    close(MSG);
-##   &send_mail("stats");
+   &send_mail("stats");
 }
 #====================================================================
 # mail_start - Set up email header and message to notify of start
@@ -146,7 +148,7 @@ sub mail_start {
    printf(STAT "<tr><td><font size='2' face='Arial'><b>Filesystem</b></font></td><td><font size='2' face='Arial'><b>Size</b></font></td><td><font size='2' face='Arial'><b>Backup<br>Type</b></font></td><td><font size='2' face='Arial'><b>Return<br>code</b></font></td><td><font size='2' face='Arial'><b>Time<br>Taken</b></font></td></tr>");
    close(STAT);
 
-##   &send_mail;
+   &send_mail;
 }
 
 #====================================================================
@@ -168,7 +170,7 @@ sub mail_end {
    open(MSG,">$MSGFILE");
    printf(MSG "</body></html>\n");
    close(MSG);
-##   &send_mail("stats");
+   &send_mail("stats");
 }
 #====================================================================
 # write_stat - write details of success/failure of backup
@@ -237,7 +239,7 @@ sub do_backup {
 
          $target_dir=sprintf("/backups/%s/%s",$Sysname,$bkType);
 
-         $bkcommand=sprintf("%s %duf - %s | %s backup\@%s \"dd of=%s/%s\"",$BACKUP_COMMAND,$BACKUPLEVEL,$mountpoint,$SSH,$BACKUPHOST,$target_dir,$dumpfile);
+         $bkcommand=sprintf("%s %duf - %s | %s -i %s/SSH_KEY backup\@%s \"dd of=%s/%s\"",$BACKUP_COMMAND,$BACKUPLEVEL,$mountpoint,$SSH,$BACKUP_HOME,$BACKUPHOST,$target_dir,$dumpfile);
          $restore_cmd=sprintf("%s rf %s/%s",$RESTORE_COMMAND,$target_dir,$dumpfile);
       }
       printf("%s\n",$bkcommand);
@@ -245,7 +247,7 @@ sub do_backup {
       $message=sprintf("BACKUP_I_203 %s backup of %s started.",$bkType,$mountpoint);
       &log_message($message);
       $start_time=time();
-##      $rc=&execute_command($bkcommand);
+      $rc=&execute_command($bkcommand);
       $finish_time = time();
       $elapsed_time = $finish_time - $start_time;
       $Elapsed_Time=&fmt_time($elapsed_time);
@@ -301,8 +303,6 @@ $bkType="Full";
 $HEADERFILE = "/tmp/backup_mail_header";
 $STATSFILE  = "/tmp/backup_mail_stats";
 $MSGFILE    = "/tmp/backup_mail_msg";
-
-$FS_INIFILE=$BACKUP_HOME."/fs.ini";
 
 # If the user has specified -h on command line, output usage and exit
 
