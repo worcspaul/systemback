@@ -17,7 +17,7 @@ $BACKUP_HOME = "/usr/local/backups";
 $LOCALCFG    = $BACKUP_HOME."/config.pl";
 $LOGPATH     = "/var/log/backups";
 $FS_INIFILE  = $BACKUP_HOME."/FS.INI";
-$COLLECTOR   = $BACKUP_HOME."/collect_info.pl;
+$COLLECTOR   = $BACKUP_HOME."/collect_info.pl";
 
 require "$LOCALCFG";
 require "$COLLECTOR";
