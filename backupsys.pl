@@ -17,9 +17,10 @@ $BACKUP_HOME = "/usr/local/backups";
 $LOCALCFG    = $BACKUP_HOME."/config.pl";
 $LOGPATH     = "/var/log/backups";
 $FS_INIFILE  = $BACKUP_HOME."/FS.INI";
-
+$COLLECTOR   = $BACKUP_HOME."/collect_info.pl;
 
 require "$LOCALCFG";
+require "$COLLECTOR";
 
 #====================================================================
 # log_message - Log the passed message to syslog
@@ -119,7 +120,7 @@ OPTIONS
 
 sub mail_errors {
    open(HDR,">$HEADERFILE");
-   printf(HDR "Subject: [BACKUP] backup failed on %s\n",$Sysname);
+   printf(HDR "Subject: [BACKUP] %s backup failed on %s\n",$bkTypeLong$Sysname);
    printf(HDR "Importance: high\n");
    printf(HDR "X-Priority: 1\n");
    close(HDR);
@@ -136,19 +137,18 @@ sub mail_errors {
 
 sub mail_start {
    open(HDR,">$HEADERFILE");
-   printf(HDR "Subject: [BACKUP] Dump of filesystems to disk files started at %s on %s\n",$Now,$Sysname);
+   printf(HDR "Subject: [BACKUP] %s dump of %s filesystems to disk files started at %s\n",$bkTypeLong,$Sysname,$NOW);
    close(HDR);
    open(MSG,">$MSGFILE");
-   printf(MSG "%s\n\nBackup of %s to file started at %s\n",$Masthead,$Sysname,$Now);
+   printf(MSG "%s\n\nBackup of %s to file started at %s\n",$Masthead,$Sysname,$NOW);
    close(MSG);
 
    open(STAT,">$STATSFILE");
    printf(STAT "<div align='left'><table border='1' id='%s'>\n",$jobset);
-#   printf(STAT "<tr><td colspan='4'><font size='2' face='Arial'>Job status summary for jobset <b>%s</b></font></td></tr>",$jobset);
-   printf(STAT "<tr><td><font size='2' face='Arial'><b>Filesystem</b></font></td><td><font size='2' face='Arial'><b>Size</b></font></td><td><font size='2' face='Arial'><b>Backup<br>Type</b></font></td><td><font size='2' face='Arial'><b>Return<br>code</b></font></td><td><font size='2' face='Arial'><b>Time<br>Taken</b></font></td></tr>");
+   printf(STAT "<tr><td><font size='2' face='Arial'><b>Filesystem</b></font></td><td><font size='2' face='Arial'><b>FS Size</b></font></td><td><font size='2' face='Arial'><b>Backup Type</b></font></td><td><font size='2' face='Arial'><b>Return code</b></font></td><td><font size='2' face='Arial'><b>Time Taken</b></font></td></tr>");
    close(STAT);
 
-   &send_mail;
+#   &send_mail;
 }
 
 #====================================================================
@@ -157,7 +157,7 @@ sub mail_start {
 
 sub mail_end {
    open(HDR,">$HEADERFILE");
-   printf(HDR "Subject: [BACKUP] Dump of filesystems to disk files finished at %s on %s\n", $Now,$Sysname);
+   printf(HDR "Subject: [BACKUP] %s dump of %s filesystems to disk files finished at %s\n", $bkTypeLong,$Sysname,$Now);
    printf(HDR "MIME-Version: 1.0\n");
    printf(HDR "Content-Type: text/html\n");
    printf(HDR "<html><body>\n");
@@ -235,50 +235,53 @@ sub do_backup {
 
       if($mounted == 1) {
          ($instance,$dump_sfx) = split(/\./,$dumpfile);
-         printf("dumpfile: %s Instance: %s\n",$dumpfile,$instance);
+#         printf("dumpfile: %s Instance: %s\n",$dumpfile,$instance);
 
-         $target_dir=sprintf("/backups/%s/%s",$Sysname,$bkType);
+         $target_dir = sprintf("/backups/%s/%s",$Sysname,$bkType);
 
-         $bkcommand=sprintf("%s %duf - %s | %s -i %s/SSH_KEY backup\@%s \"dd of=%s/%s\"",$BACKUP_COMMAND,$BACKUPLEVEL,$mountpoint,$SSH,$BACKUP_HOME,$BACKUPHOST,$target_dir,$dumpfile);
-         $restore_cmd=sprintf("%s rf %s/%s",$RESTORE_COMMAND,$target_dir,$dumpfile);
+         $bkcommand = sprintf("%s %duf - %s | %s -i %s/SSH_KEY backup\@%s \"dd of=%s/%s\"",$BACKUP_COMMAND,$BACKUPLEVEL,$mountpoint,$SSH,$BACKUP_HOME,$BACKUPHOST,$target_dir,$dumpfile);
+         $restore_cmd = sprintf("%s rf %s/%s",$RESTORE_COMMAND,$target_dir,$dumpfile);
       }
       printf("%s\n",$bkcommand);
 
-      $message=sprintf("BACKUP_I_203 %s backup of %s started.",$bkType,$mountpoint);
+      $message = sprintf("BACKUP_I_203 %s backup of %s started.",$bkType,$mountpoint);
       &log_message($message);
-      $start_time=time();
-      $rc=&execute_command($bkcommand);
+      $start_time = time();
+      $rc = &execute_command($bkcommand);
       $finish_time = time();
       $elapsed_time = $finish_time - $start_time;
-      $Elapsed_Time=&fmt_time($elapsed_time);
+      $Elapsed_Time = &fmt_time($elapsed_time);
       &write_stat($STATSFILE,$mountpoint,$bkType,$rc,$elapsed_time);
 
       if ( $rc != 0 ){
          $Now=`date "+%d-%b-%Y %T"`;
          chop($Now);
-         $message=sprintf("BACKUP_F_205 %s Backup of %s failed with code %d",$bkType,$mountpoint,$rc);
+         $message = sprintf("BACKUP_F_205 %s Backup of %s failed with code %d",$bkType,$mountpoint,$rc);
          &log_message($message);
          $errmsg = sprintf("Dump to file of %s failed at %s.  Elapsed time: %s",$mountpoint,$Now,$Elapsed_Time);
          &mail_errors($errmsg);
          &write_log("F");
       } else {
 # dump command completed successfully.  Send message to syslog
-            $message=sprintf("BACKUP_I_204 %s backup of %s complete",$bkType,$mountpoint);
+            $message = sprintf("BACKUP_I_204 %s backup of %s complete",$bkType,$mountpoint);
             &log_message($message);
       }
       printf(OUT "%s/%s\n",$rtarget_dir,$dumpfile);
 #Now write a line to the "restorer" script
-##         if ($dumpfile !~ /root/) {
-##            printf(OUT1 "cd %s\n",$mountpoint);
-##            printf(OUT1 "pwd\n");
-##            printf(OUT1 "date\n");
-##            printf(OUT1 "%s\n",$restore_cmd);
-##            printf(OUT1 "date\n");
-##         }
+         if ($dumpfile !~ /root/) {
+            printf(OUT1 "cd %s\n",$mountpoint);
+            printf(OUT1 "pwd\n");
+            printf(OUT1 "date\n");
+            printf(OUT1 "%s\n",$restore_cmd);
+            printf(OUT1 "date\n");
+         }
    }
    close(IN);
    close(OUT);
-##   close(OUT1);
+   close(OUT1);
+   $copy_command = sprintf("scp -i %s/SSH_KEY /tmp/restorer backup\@%s:%s",$BACKUP_HOME,$BACKUPHOST,$target_dir);
+#   print "$copy_command\n";
+   $rc = &execute_command($copy_command);
 }
 
 #########################################################################################
@@ -289,11 +292,11 @@ sub do_backup {
 #
 #====================================================================
 
-$Red = "#CC0000";
-$Green = "#00BB00";
-$Yellow ="#EEBB00";
-$White = "#FFFFFF";
-$mtab = "/etc/mtab";
+$Red    = "#CC0000";
+$Green  = "#00BB00";
+$Yellow = "#EEBB00";
+$White  = "#FFFFFF";
+$mtab   = "/etc/mtab";
 
 $Sysname = `hostname`;
 print $Sysname;
@@ -313,15 +316,16 @@ if (defined $opt_h) {
 
 # If user has requested an Incremental backup, set type to "Inc" and level to 1
 if (defined $opt_i) {
-   $bkType="Inc";
-   $BACKUPLEVEL=1;
+   $bkType = "Inc";
+   $bkTypeLong = "Incremental";
+   $BACKUPLEVEL =1;
 }
 print "Backup Type:     $bkType\n";
 
 # Set up a couple of log file names based on date/time   
-$Now=`date "+%Y%m%d.%H%M%S"`;
+$Now = `date "+%Y%m%d.%H%M%S"`;
 chop($Now);
-$DUMPLOG=sprintf("%s/%s_%s_dump_log.%s",$LOGPATH,$Sysname,$bkType,$Now);
+$DUMPLOG = sprintf("%s/%s_%s_dump_log.%s",$LOGPATH,$Sysname,$bkType,$Now);
 
 # If a permanent backup is required, set the policy to YearEnd and the schedule
 # to the host class (normally used to determine the _policy_ Also, set the backup
@@ -329,23 +333,23 @@ $DUMPLOG=sprintf("%s/%s_%s_dump_log.%s",$LOGPATH,$Sysname,$bkType,$Now);
 # Incremental
 
 if (defined $opt_p) {
-   $policy="YearEnd";
-   $schedule=$host_class;
-   $bkType="Full";
-   $BACKUPLEVEL=0;
+   $policy = "YearEnd";
+   $schedule = $host_class;
+   $bkType = "Full";
+   $BACKUPLEVEL = 0;
 }
 
-$target_dir=sprintf("/backups/%s/%s",$Sysname,$bkType);
-## $restorer_script=sprintf("%s/restorer",$target_dir);
+$target_dir      = sprintf("/backups/%s/%s",$Sysname,$bkType);
+$restorer_script = sprintf("/tmp/restorer");
 
 # Output some stuff if -d option used
 
-$DOW=`date "+%a"`;
+$DOW = `date "+%a"`;
 chop($DOW);
-$Now=`date "+%d-%b-%Y %T"`;
-chop($Now);
+$NOW = `date "+%d-%b-%Y %T"`;
+chop($NOW);
 system("echo \"Filesystem dumps started `date`\" >".$DUMPLOG);
-$Start_Time=$Now;
+$Start_Time = $NOW;
 
 if(defined $opt_d) {
    print "Host:            $Sysname\n";
@@ -376,20 +380,20 @@ $Backups_started = time();
 ## }
 
 $bash_location=`which bash`;
-## open(OUT1,">$restorer_script") || die "Unable to open restorer script for writing!";
-## printf(OUT1 "#!%s",$bash_location);
+open(OUT1,">$restorer_script") || die "Unable to open restorer script for writing!";
+printf(OUT1 "#!%s",$bash_location);
 
 &do_backup;
 
 $Backups_finished = time();
 $Backups_Elapsed_time = $Backups_finished - $Backups_started;
-$Now=`date "+%d-%b-%Y %T"`;
+$Now = `date "+%d-%b-%Y %T"`;
 chop($Now);
 $message = sprintf("BACKUP_I_206 %s backup of %s finished %s",$bkType,$Sysname,$Now);
 
 &log_message($message);
 
-$Elapsed_Time=&fmt_time($Backups_Elapsed_time);
+$Elapsed_Time = &fmt_time($Backups_Elapsed_time);
 
 &mail_end;
 &write_log("S");
